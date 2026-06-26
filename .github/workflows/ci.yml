@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # Raylib is built from C source, so its desktop dependencies must be present
+  # to compile/link on Linux. (Windows and macOS get theirs from the SDK.)
+  # Unquoted on purpose below — the shell word-splits this into separate args.
+  LINUX_DEPS: >-
+    libasound2-dev libx11-dev libxrandr-dev libxi-dev
+    libgl1-mesa-dev libglu1-mesa-dev libxcursor-dev
+    libxinerama-dev libwayland-dev libxkbcommon-dev
+
+jobs:
+  # Gate: build and run the tests once. If this fails, no artifacts are built.
+  # The tests are pure logic, so a single Linux run is enough coverage.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - uses: jdx/mise-action@v2 # installs the zig version from mise.toml
+      - run: zig build test
+
+  # One native runner per platform — far more reliable than cross-compiling,
+  # since Raylib pulls in each platform's own windowing/graphics system libs.
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: linux-x86_64
+          - os: windows-latest
+            artifact: windows-x86_64
+          - os: macos-latest
+            artifact: macos-aarch64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
+      - uses: jdx/mise-action@v2
+      - run: zig build -Doptimize=ReleaseFast
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forthlike-${{ matrix.artifact }}
+          path: zig-out/bin/
+          if-no-files-found: error
