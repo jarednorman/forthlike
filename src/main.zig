@@ -1,5 +1,7 @@
 const rl = @import("raylib");
 
+const forthlike = @import("forthlike");
+
 pub fn main() void {
     rl.initWindow(800, 450, "my game");
     defer rl.closeWindow();
