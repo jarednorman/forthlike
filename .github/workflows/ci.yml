@@ -14,6 +14,9 @@ env:
     libasound2-dev libx11-dev libxrandr-dev libxi-dev
     libgl1-mesa-dev libglu1-mesa-dev libxcursor-dev
     libxinerama-dev libwayland-dev libxkbcommon-dev
+  # Redirect Zig's global cache (downloaded packages) into the workspace, so a
+  # single cache step captures it the same way on every OS.
+  ZIG_GLOBAL_CACHE_DIR: ${{ github.workspace }}/.zig-global-cache
 
 jobs:
   # Gate: build and run the tests once. If this fails, no artifacts are built.
@@ -21,9 +24,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
-      - uses: jdx/mise-action@v2 # installs the zig version from mise.toml
+      - uses: jdx/mise-action@v4 # installs the zig version from mise.toml
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .zig-cache
+            .zig-global-cache
+          key: zig-test-${{ runner.os }}-${{ hashFiles('build.zig.zon', 'build.zig') }}
+          restore-keys: zig-test-${{ runner.os }}-
       - run: zig build test
 
   # One native runner per platform — far more reliable than cross-compiling,
@@ -42,12 +52,19 @@ jobs:
             artifact: macos-aarch64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y $LINUX_DEPS
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .zig-cache
+            .zig-global-cache
+          key: zig-build-${{ runner.os }}-${{ hashFiles('build.zig.zon', 'build.zig') }}
+          restore-keys: zig-build-${{ runner.os }}-
       - run: zig build -Doptimize=ReleaseFast
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: forthlike-${{ matrix.artifact }}
           path: zig-out/bin/
