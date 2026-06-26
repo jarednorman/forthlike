@@ -10,6 +10,14 @@ The mental model is **two machines, one membrane**: the engine is the host and d
 
 Current state: the Forth layer is **not yet implemented**. `src/main.zig` is a minimal Raylib window and `src/root.zig` is a stub.
 
+## How to help
+
+This is a **learning exercise for the user**, who is new to both Forth and Zig. The user writes the code themselves. By default, **do not write or edit code** in `src/` (or other source files) — no unprompted first drafts, scaffolding, or example slices meant to be pasted in.
+
+Your default role is **guidance**: explain concepts, point to the next concrete step, sketch the *shape* of a solution in prose (name the pieces, their responsibilities, how they fit), review code the user has written, and answer questions. When tempted to show code, describe it instead and let the user write it.
+
+The exception is when the user **explicitly asks** for code generation or an edit — then it's fine to provide it. Only write or suggest source edits on explicit request; never volunteer them. (Editing non-source docs like this file when asked is always fine.)
+
 ## Toolchain
 
 - Zig and ZLS are managed by **mise** (`mise.toml`, both `latest`; currently Zig **0.16.0**). Zig is pre-1.0 and this tracks `latest`, so **verify `comptime`/build-system syntax against the installed version rather than assuming**.
