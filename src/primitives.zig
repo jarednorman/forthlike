@@ -20,10 +20,12 @@ const dictionary = [_]Word{
     .{ .name = "/mod", .func = divmod },
     .{ .name = "=", .func = eq },
     .{ .name = "<", .func = lessThan },
+    .{ .name = "0=", .func = isZero },
 };
 
 fn dup(stack: *Stack) ForthError!void {
     const value = try stack.pop();
+
     try stack.push(value);
     try stack.push(value);
 }
@@ -35,6 +37,7 @@ fn drop(stack: *Stack) ForthError!void {
 fn swap(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
+
     try stack.push(a);
     try stack.push(b);
 }
@@ -42,6 +45,7 @@ fn swap(stack: *Stack) ForthError!void {
 fn over(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
+
     try stack.push(b);
     try stack.push(a);
     try stack.push(b);
@@ -50,18 +54,21 @@ fn over(stack: *Stack) ForthError!void {
 fn add(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
+
     try stack.push(a + b);
 }
 
 fn sub(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
+
     try stack.push(b - a);
 }
 
 fn mul(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
+
     try stack.push(a * b);
 }
 
@@ -80,13 +87,21 @@ fn divmod(stack: *Stack) ForthError!void {
 fn eq(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
+
     try stack.push(if (a == b) -1 else 0);
 }
 
 fn lessThan(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
+
     try stack.push(if (b < a) -1 else 0);
+}
+
+fn isZero(stack: *Stack) ForthError!void {
+    const a = try stack.pop();
+
+    try stack.push(if (a == 0) -1 else 0);
 }
 
 pub fn find(name: []const u8) ?Word {
