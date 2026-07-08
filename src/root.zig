@@ -11,6 +11,7 @@ const dictionary = [_]Word{
     .{ .name = "dup", .func = dup },
     .{ .name = "drop", .func = drop },
     .{ .name = "swap", .func = swap },
+    .{ .name = "over", .func = over },
 };
 
 fn dup(stack: *Stack) ForthError!void {
@@ -26,6 +27,14 @@ fn drop(stack: *Stack) ForthError!void {
 fn swap(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
+    try stack.push(a);
+    try stack.push(b);
+}
+
+fn over(stack: *Stack) ForthError!void {
+    const a = try stack.pop();
+    const b = try stack.pop();
+    try stack.push(b);
     try stack.push(a);
     try stack.push(b);
 }
@@ -139,4 +148,14 @@ test "swap swaps the top two items on the stack" {
 
     try std.testing.expectEqual(1, stack.pop());
     try std.testing.expectEqual(2, stack.pop());
+}
+
+test "over copies the second item on the stack to the top" {
+    var stack = Stack{};
+
+    try stack.interpret("1 2 over");
+
+    try std.testing.expectEqual(1, stack.pop());
+    try std.testing.expectEqual(2, stack.pop());
+    try std.testing.expectEqual(1, stack.pop());
 }
