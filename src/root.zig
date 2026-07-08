@@ -9,7 +9,18 @@ const Word = struct {
 
 const dictionary = [_]Word{
     .{ .name = "dup", .func = dup },
+    .{ .name = "drop", .func = drop },
 };
+
+fn dup(stack: *Stack) ForthError!void {
+    const value = try stack.pop();
+    try stack.push(value);
+    try stack.push(value);
+}
+
+fn drop(stack: *Stack) ForthError!void {
+    _ = try stack.pop();
+}
 
 fn find(name: []const u8) ?Word {
     for (dictionary) |word| {
@@ -19,12 +30,6 @@ fn find(name: []const u8) ?Word {
     }
 
     return null;
-}
-
-fn dup(stack: *Stack) ForthError!void {
-    const value = try stack.pop();
-    try stack.push(value);
-    try stack.push(value);
 }
 
 const Stack = struct {
@@ -108,5 +113,13 @@ test "dup duplicates the top of the stack" {
 
     try std.testing.expectEqual(2, stack.pop());
     try std.testing.expectEqual(2, stack.pop());
+    try std.testing.expectEqual(1, stack.pop());
+}
+
+test "drop drops the top of the stack" {
+    var stack = Stack{};
+
+    try stack.interpret("1 2 drop");
+
     try std.testing.expectEqual(1, stack.pop());
 }
