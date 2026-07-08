@@ -116,3 +116,11 @@ test "= leaves 0 on the stack when the top two elements are not equal" {
 
     try std.testing.expectEqual(0, stack.pop());
 }
+
+test "< leaves -1 on the stack when the second element is less than the top element" {
+    var stack = Stack{};
+
+    try interpret(&stack, "1 2 <");
+
+    try std.testing.expectEqual(-1, stack.pop());
+}
