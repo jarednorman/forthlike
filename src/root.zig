@@ -12,6 +12,9 @@ const dictionary = [_]Word{
     .{ .name = "drop", .func = drop },
     .{ .name = "swap", .func = swap },
     .{ .name = "over", .func = over },
+    .{ .name = "+", .func = add },
+    .{ .name = "-", .func = sub },
+    .{ .name = "*", .func = mul },
 };
 
 fn dup(stack: *Stack) ForthError!void {
@@ -37,6 +40,24 @@ fn over(stack: *Stack) ForthError!void {
     try stack.push(b);
     try stack.push(a);
     try stack.push(b);
+}
+
+fn add(stack: *Stack) ForthError!void {
+    const a = try stack.pop();
+    const b = try stack.pop();
+    try stack.push(a + b);
+}
+
+fn sub(stack: *Stack) ForthError!void {
+    const a = try stack.pop();
+    const b = try stack.pop();
+    try stack.push(b - a);
+}
+
+fn mul(stack: *Stack) ForthError!void {
+    const a = try stack.pop();
+    const b = try stack.pop();
+    try stack.push(a * b);
 }
 
 fn find(name: []const u8) ?Word {
@@ -158,4 +179,28 @@ test "over copies the second item on the stack to the top" {
     try std.testing.expectEqual(1, stack.pop());
     try std.testing.expectEqual(2, stack.pop());
     try std.testing.expectEqual(1, stack.pop());
+}
+
+test "add adds the top two items on the stack" {
+    var stack = Stack{};
+
+    try stack.interpret("1 2 +");
+
+    try std.testing.expectEqual(3, stack.pop());
+}
+
+test "sub subtracts the top two items on the stack" {
+    var stack = Stack{};
+
+    try stack.interpret("2 1 -");
+
+    try std.testing.expectEqual(1, stack.pop());
+}
+
+test "mul multiplies the top two items on the stack" {
+    var stack = Stack{};
+
+    try stack.interpret("2 3 *");
+
+    try std.testing.expectEqual(6, stack.pop());
 }
