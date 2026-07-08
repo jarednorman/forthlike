@@ -11,6 +11,16 @@ const dictionary = [_]Word{
     .{ .name = "dup", .func = dup },
 };
 
+fn find(name: []const u8) ?Word {
+    for (dictionary) |word| {
+        if (std.mem.eql(u8, word.name, name)) {
+            return word;
+        }
+    }
+
+    return null;
+}
+
 fn dup(stack: *Stack) ForthError!void {
     const value = try stack.pop();
     try stack.push(value);
@@ -43,7 +53,9 @@ const Stack = struct {
         var words = std.mem.tokenizeAny(u8, source, " \t\r\n");
 
         while (words.next()) |word| {
-            if (std.fmt.parseInt(i64, word, 10)) |number| {
+            if (find(word)) |entry| {
+                try entry.func(self);
+            } else if (std.fmt.parseInt(i64, word, 10)) |number| {
                 try self.push(number);
             } else |_| {
                 return ForthError.UnknownWord;
@@ -86,5 +98,15 @@ test "interpet pushes numbers in order" {
     try std.testing.expectEqual(4, stack.pop());
     try std.testing.expectEqual(2, stack.pop());
     try std.testing.expectEqual(10, stack.pop());
+    try std.testing.expectEqual(1, stack.pop());
+}
+
+test "dup duplicates the top of the stack" {
+    var stack = Stack{};
+
+    try stack.interpret("1 2 dup");
+
+    try std.testing.expectEqual(2, stack.pop());
+    try std.testing.expectEqual(2, stack.pop());
     try std.testing.expectEqual(1, stack.pop());
 }
