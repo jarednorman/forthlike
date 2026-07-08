@@ -1,6 +1,11 @@
 const std = @import("std");
 
-const ForthError = error{ StackOverflow, StackUnderflow, UnknownWord };
+const ForthError = error{
+    StackOverflow,
+    StackUnderflow,
+    UnknownWord,
+    ZeroDivision,
+};
 
 const Word = struct {
     name: []const u8,
@@ -15,6 +20,7 @@ const dictionary = [_]Word{
     .{ .name = "+", .func = add },
     .{ .name = "-", .func = sub },
     .{ .name = "*", .func = mul },
+    .{ .name = "/mod", .func = divmod },
 };
 
 fn dup(stack: *Stack) ForthError!void {
@@ -58,6 +64,18 @@ fn mul(stack: *Stack) ForthError!void {
     const a = try stack.pop();
     const b = try stack.pop();
     try stack.push(a * b);
+}
+
+fn divmod(stack: *Stack) ForthError!void {
+    const a = try stack.pop();
+    const b = try stack.pop();
+
+    if (a == 0) {
+        return ForthError.ZeroDivision;
+    }
+
+    try stack.push(@rem(b, a));
+    try stack.push(@divTrunc(b, a));
 }
 
 fn find(name: []const u8) ?Word {
@@ -203,4 +221,13 @@ test "mul multiplies the top two items on the stack" {
     try stack.interpret("2 3 *");
 
     try std.testing.expectEqual(6, stack.pop());
+}
+
+test "/mod leaves the remainder and quotient on the stack" {
+    var stack = Stack{};
+
+    try stack.interpret("10 3 /mod");
+
+    try std.testing.expectEqual(3, stack.pop());
+    try std.testing.expectEqual(1, stack.pop());
 }
