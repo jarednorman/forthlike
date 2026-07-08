@@ -2,6 +2,21 @@ const std = @import("std");
 
 const ForthError = error{ StackOverflow, StackUnderflow, UnknownWord };
 
+const Word = struct {
+    name: []const u8,
+    func: *const fn (stack: *Stack) ForthError!void,
+};
+
+const dictionary = [_]Word{
+    .{ .name = "dup", .func = dup },
+};
+
+fn dup(stack: *Stack) ForthError!void {
+    const value = try stack.pop();
+    try stack.push(value);
+    try stack.push(value);
+}
+
 const Stack = struct {
     storage: [16]i64 = undefined,
     count: usize = 0,
