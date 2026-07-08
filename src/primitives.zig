@@ -18,6 +18,7 @@ const dictionary = [_]Word{
     .{ .name = "-", .func = sub },
     .{ .name = "*", .func = mul },
     .{ .name = "/mod", .func = divmod },
+    .{ .name = "=", .func = eq },
 };
 
 fn dup(stack: *Stack) ForthError!void {
@@ -73,6 +74,12 @@ fn divmod(stack: *Stack) ForthError!void {
 
     try stack.push(@rem(b, a));
     try stack.push(@divTrunc(b, a));
+}
+
+fn eq(stack: *Stack) ForthError!void {
+    const a = try stack.pop();
+    const b = try stack.pop();
+    try stack.push(if (a == b) -1 else 0);
 }
 
 pub fn find(name: []const u8) ?Word {

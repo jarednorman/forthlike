@@ -100,3 +100,19 @@ test "/mod leaves the remainder and quotient on the stack" {
     try std.testing.expectEqual(3, stack.pop());
     try std.testing.expectEqual(1, stack.pop());
 }
+
+test "= leaves -1 on the stack when the top two elements are equal" {
+    var stack = Stack{};
+
+    try interpret(&stack, "1 1 =");
+
+    try std.testing.expectEqual(-1, stack.pop());
+}
+
+test "= leaves 0 on the stack when the top two elements are not equal" {
+    var stack = Stack{};
+
+    try interpret(&stack, "1 2 =");
+
+    try std.testing.expectEqual(0, stack.pop());
+}
