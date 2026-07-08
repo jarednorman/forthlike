@@ -21,6 +21,7 @@ const dictionary = [_]Word{
     .{ .name = "=", .func = eq },
     .{ .name = "<", .func = lessThan },
     .{ .name = "0=", .func = isZero },
+    .{ .name = ".", .func = print },
 };
 
 fn dup(stack: *Stack) ForthError!void {
@@ -102,6 +103,12 @@ fn isZero(stack: *Stack) ForthError!void {
     const a = try stack.pop();
 
     try stack.push(if (a == 0) -1 else 0);
+}
+
+fn print(stack: *Stack) ForthError!void {
+    const value = try stack.pop();
+
+    std.debug.print("{}\n", .{value});
 }
 
 pub fn find(name: []const u8) ?Word {

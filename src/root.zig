@@ -140,3 +140,11 @@ test "0= leaves 0 on the stack when the top element is not 0" {
 
     try std.testing.expectEqual(0, stack.pop());
 }
+
+test ". pops the top element and prints it" {
+    var stack = Stack{};
+
+    try interpret(&stack, "42 .");
+
+    try std.testing.expectEqual(0, stack.count);
+}
