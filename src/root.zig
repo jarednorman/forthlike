@@ -31,6 +31,12 @@ test "interpet pushes numbers in order" {
     try std.testing.expectEqual(1, stack.pop());
 }
 
+test "interpet returns an error for unknown words" {
+    var stack = Stack{};
+
+    try std.testing.expectError(ForthError.UnknownWord, interpret(&stack, "1 2 unknown_word"));
+}
+
 test "dup duplicates the top of the stack" {
     var stack = Stack{};
 
