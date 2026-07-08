@@ -1,35 +1,37 @@
 const std = @import("std");
 
+const ForthError = error{ StackOverflow, StackUnderflow, UnknownWord };
+
 const Stack = struct {
     storage: [16]i64 = undefined,
     count: usize = 0,
 
-    fn push(self: *Stack, value: i64) !void {
+    fn push(self: *Stack, value: i64) ForthError!void {
         if (self.count >= self.storage.len) {
-            return error.StackOverflow;
+            return ForthError.StackOverflow;
         }
 
         self.storage[self.count] = value;
         self.count += 1;
     }
 
-    fn pop(self: *Stack) !i64 {
+    fn pop(self: *Stack) ForthError!i64 {
         if (self.count == 0) {
-            return error.StackUnderflow;
+            return ForthError.StackUnderflow;
         }
 
         self.count -= 1;
         return self.storage[self.count];
     }
 
-    fn interpret(self: *Stack, source: []const u8) !void {
+    fn interpret(self: *Stack, source: []const u8) ForthError!void {
         var words = std.mem.tokenizeAny(u8, source, " \t\r\n");
 
         while (words.next()) |word| {
             if (std.fmt.parseInt(i64, word, 10)) |number| {
                 try self.push(number);
             } else |_| {
-                return error.UnknownWord;
+                return ForthError.UnknownWord;
             }
         }
     }
