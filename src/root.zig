@@ -4,7 +4,7 @@ const stack_mod = @import("stack.zig");
 const primitives = @import("primitives.zig");
 
 const ForthError = stack_mod.ForthError;
-const Stack = stack_mod.Stack;
+pub const Stack = stack_mod.Stack;
 
 pub fn interpret(stack: *Stack, source: []const u8) ForthError!void {
     var words = std.mem.tokenizeAny(u8, source, " \t\r\n");
