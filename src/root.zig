@@ -154,3 +154,30 @@ test ". pops the top element and prints it" {
 
     try std.testing.expectEqual(0, vm.data_stack.count);
 }
+
+test ">r moves the top element from the data stack to the return stack" {
+    var vm = Vm{};
+
+    try interpret(&vm, "42 >r");
+
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(42, vm.return_stack.pop());
+}
+
+test "r> moves the top element from the return stack to the data stack" {
+    var vm = Vm{};
+
+    try interpret(&vm, "42 >r r>");
+
+    try std.testing.expectEqual(42, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "r@ copies the top element from the return stack to the data stack" {
+    var vm = Vm{};
+
+    try interpret(&vm, "42 >r r@");
+
+    try std.testing.expectEqual(42, vm.data_stack.pop());
+    try std.testing.expectEqual(42, vm.return_stack.pop());
+}

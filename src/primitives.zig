@@ -22,6 +22,9 @@ const dictionary = [_]Word{
     .{ .name = "<", .func = lessThan },
     .{ .name = "0=", .func = isZero },
     .{ .name = ".", .func = print },
+    .{ .name = ">r", .func = toReturnStack },
+    .{ .name = "r>", .func = fromReturnStack },
+    .{ .name = "r@", .func = copyFromReturnStack },
 };
 
 fn dup(vm: *Vm) ForthError!void {
@@ -109,6 +112,25 @@ fn print(vm: *Vm) ForthError!void {
     const value = try vm.data_stack.pop();
 
     std.debug.print("{}\n", .{value});
+}
+
+fn toReturnStack(vm: *Vm) ForthError!void {
+    const value = try vm.data_stack.pop();
+
+    try vm.return_stack.push(value);
+}
+
+fn fromReturnStack(vm: *Vm) ForthError!void {
+    const value = try vm.return_stack.pop();
+
+    try vm.data_stack.push(value);
+}
+
+fn copyFromReturnStack(vm: *Vm) ForthError!void {
+    const value = try vm.return_stack.pop();
+
+    try vm.return_stack.push(value);
+    try vm.data_stack.push(value);
 }
 
 pub fn find(name: []const u8) ?Word {
