@@ -30,6 +30,11 @@ pub const Stack = struct {
     }
 };
 
+pub const Vm = struct {
+    data_stack: Stack = Stack{},
+    return_stack: Stack = Stack{},
+};
+
 test "stack push and pop" {
     var stack = Stack{};
 

@@ -2,11 +2,11 @@ const std = @import("std");
 
 const stack_mod = @import("stack.zig");
 const ForthError = stack_mod.ForthError;
-const Stack = stack_mod.Stack;
+const Vm = stack_mod.Vm;
 
 pub const Word = struct {
     name: []const u8,
-    func: *const fn (stack: *Stack) ForthError!void,
+    func: *const fn (vm: *Vm) ForthError!void,
 };
 
 const dictionary = [_]Word{
@@ -24,89 +24,89 @@ const dictionary = [_]Word{
     .{ .name = ".", .func = print },
 };
 
-fn dup(stack: *Stack) ForthError!void {
-    const value = try stack.pop();
+fn dup(vm: *Vm) ForthError!void {
+    const value = try vm.data_stack.pop();
 
-    try stack.push(value);
-    try stack.push(value);
+    try vm.data_stack.push(value);
+    try vm.data_stack.push(value);
 }
 
-fn drop(stack: *Stack) ForthError!void {
-    _ = try stack.pop();
+fn drop(vm: *Vm) ForthError!void {
+    _ = try vm.data_stack.pop();
 }
 
-fn swap(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
-    const b = try stack.pop();
+fn swap(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
+    const b = try vm.data_stack.pop();
 
-    try stack.push(a);
-    try stack.push(b);
+    try vm.data_stack.push(a);
+    try vm.data_stack.push(b);
 }
 
-fn over(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
-    const b = try stack.pop();
+fn over(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
+    const b = try vm.data_stack.pop();
 
-    try stack.push(b);
-    try stack.push(a);
-    try stack.push(b);
+    try vm.data_stack.push(b);
+    try vm.data_stack.push(a);
+    try vm.data_stack.push(b);
 }
 
-fn add(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
-    const b = try stack.pop();
+fn add(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
+    const b = try vm.data_stack.pop();
 
-    try stack.push(a + b);
+    try vm.data_stack.push(a + b);
 }
 
-fn sub(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
-    const b = try stack.pop();
+fn sub(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
+    const b = try vm.data_stack.pop();
 
-    try stack.push(b - a);
+    try vm.data_stack.push(b - a);
 }
 
-fn mul(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
-    const b = try stack.pop();
+fn mul(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
+    const b = try vm.data_stack.pop();
 
-    try stack.push(a * b);
+    try vm.data_stack.push(a * b);
 }
 
-fn divmod(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
-    const b = try stack.pop();
+fn divmod(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
+    const b = try vm.data_stack.pop();
 
     if (a == 0) {
         return ForthError.ZeroDivision;
     }
 
-    try stack.push(@rem(b, a));
-    try stack.push(@divTrunc(b, a));
+    try vm.data_stack.push(@rem(b, a));
+    try vm.data_stack.push(@divTrunc(b, a));
 }
 
-fn eq(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
-    const b = try stack.pop();
+fn eq(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
+    const b = try vm.data_stack.pop();
 
-    try stack.push(if (a == b) -1 else 0);
+    try vm.data_stack.push(if (a == b) -1 else 0);
 }
 
-fn lessThan(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
-    const b = try stack.pop();
+fn lessThan(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
+    const b = try vm.data_stack.pop();
 
-    try stack.push(if (b < a) -1 else 0);
+    try vm.data_stack.push(if (b < a) -1 else 0);
 }
 
-fn isZero(stack: *Stack) ForthError!void {
-    const a = try stack.pop();
+fn isZero(vm: *Vm) ForthError!void {
+    const a = try vm.data_stack.pop();
 
-    try stack.push(if (a == 0) -1 else 0);
+    try vm.data_stack.push(if (a == 0) -1 else 0);
 }
 
-fn print(stack: *Stack) ForthError!void {
-    const value = try stack.pop();
+fn print(vm: *Vm) ForthError!void {
+    const value = try vm.data_stack.pop();
 
     std.debug.print("{}\n", .{value});
 }

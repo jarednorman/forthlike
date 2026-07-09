@@ -4,153 +4,153 @@ const stack_mod = @import("stack.zig");
 const primitives = @import("primitives.zig");
 
 const ForthError = stack_mod.ForthError;
-pub const Stack = stack_mod.Stack;
+pub const Vm = stack_mod.Vm;
 
-pub fn interpret(stack: *Stack, source: []const u8) ForthError!void {
+pub fn interpret(vm: *Vm, source: []const u8) ForthError!void {
     var words = std.mem.tokenizeAny(u8, source, " \t\r\n");
 
     while (words.next()) |word| {
         if (primitives.find(word)) |entry| {
-            try entry.func(stack);
+            try entry.func(vm);
         } else if (std.fmt.parseInt(i64, word, 10)) |number| {
-            try stack.push(number);
+            try vm.data_stack.push(number);
         } else |_| {
             return ForthError.UnknownWord;
         }
     }
 }
 
-test "interpet pushes numbers in order" {
-    var stack = Stack{};
+test "interpet pushes numbers onto the data stack in order" {
+    var vm = Vm{};
 
-    try interpret(&stack, "1 10 2 4");
+    try interpret(&vm, "1 10 2 4");
 
-    try std.testing.expectEqual(4, stack.pop());
-    try std.testing.expectEqual(2, stack.pop());
-    try std.testing.expectEqual(10, stack.pop());
-    try std.testing.expectEqual(1, stack.pop());
+    try std.testing.expectEqual(4, vm.data_stack.pop());
+    try std.testing.expectEqual(2, vm.data_stack.pop());
+    try std.testing.expectEqual(10, vm.data_stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
 }
 
 test "interpet returns an error for unknown words" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try std.testing.expectError(ForthError.UnknownWord, interpret(&stack, "1 2 unknown_word"));
+    try std.testing.expectError(ForthError.UnknownWord, interpret(&vm, "1 2 unknown_word"));
 }
 
-test "dup duplicates the top of the stack" {
-    var stack = Stack{};
+test "dup duplicates the top of the data stack" {
+    var vm = Vm{};
 
-    try interpret(&stack, "1 2 dup");
+    try interpret(&vm, "1 2 dup");
 
-    try std.testing.expectEqual(2, stack.pop());
-    try std.testing.expectEqual(2, stack.pop());
-    try std.testing.expectEqual(1, stack.pop());
+    try std.testing.expectEqual(2, vm.data_stack.pop());
+    try std.testing.expectEqual(2, vm.data_stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
 }
 
 test "drop drops the top of the stack" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "1 2 drop");
+    try interpret(&vm, "1 2 drop");
 
-    try std.testing.expectEqual(1, stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
 }
 
 test "swap swaps the top two items on the stack" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "1 2 swap");
+    try interpret(&vm, "1 2 swap");
 
-    try std.testing.expectEqual(1, stack.pop());
-    try std.testing.expectEqual(2, stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
+    try std.testing.expectEqual(2, vm.data_stack.pop());
 }
 
 test "over copies the second item on the stack to the top" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "1 2 over");
+    try interpret(&vm, "1 2 over");
 
-    try std.testing.expectEqual(1, stack.pop());
-    try std.testing.expectEqual(2, stack.pop());
-    try std.testing.expectEqual(1, stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
+    try std.testing.expectEqual(2, vm.data_stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
 }
 
 test "add adds the top two items on the stack" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "1 2 +");
+    try interpret(&vm, "1 2 +");
 
-    try std.testing.expectEqual(3, stack.pop());
+    try std.testing.expectEqual(3, vm.data_stack.pop());
 }
 
 test "sub subtracts the top two items on the stack" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "2 1 -");
+    try interpret(&vm, "2 1 -");
 
-    try std.testing.expectEqual(1, stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
 }
 
 test "mul multiplies the top two items on the stack" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "2 3 *");
+    try interpret(&vm, "2 3 *");
 
-    try std.testing.expectEqual(6, stack.pop());
+    try std.testing.expectEqual(6, vm.data_stack.pop());
 }
 
 test "/mod leaves the remainder and quotient on the stack" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "10 3 /mod");
+    try interpret(&vm, "10 3 /mod");
 
-    try std.testing.expectEqual(3, stack.pop());
-    try std.testing.expectEqual(1, stack.pop());
+    try std.testing.expectEqual(3, vm.data_stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
 }
 
 test "= leaves -1 on the stack when the top two elements are equal" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "1 1 =");
+    try interpret(&vm, "1 1 =");
 
-    try std.testing.expectEqual(-1, stack.pop());
+    try std.testing.expectEqual(-1, vm.data_stack.pop());
 }
 
 test "= leaves 0 on the stack when the top two elements are not equal" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "1 2 =");
+    try interpret(&vm, "1 2 =");
 
-    try std.testing.expectEqual(0, stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.pop());
 }
 
 test "< leaves -1 on the stack when the second element is less than the top element" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "1 2 <");
+    try interpret(&vm, "1 2 <");
 
-    try std.testing.expectEqual(-1, stack.pop());
+    try std.testing.expectEqual(-1, vm.data_stack.pop());
 }
 
 test "0= leaves -1 on the stack when the top element is 0" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "0 0=");
+    try interpret(&vm, "0 0=");
 
-    try std.testing.expectEqual(-1, stack.pop());
+    try std.testing.expectEqual(-1, vm.data_stack.pop());
 }
 
 test "0= leaves 0 on the stack when the top element is not 0" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "1 0=");
+    try interpret(&vm, "1 0=");
 
-    try std.testing.expectEqual(0, stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.pop());
 }
 
 test ". pops the top element and prints it" {
-    var stack = Stack{};
+    var vm = Vm{};
 
-    try interpret(&stack, "42 .");
+    try interpret(&vm, "42 .");
 
-    try std.testing.expectEqual(0, stack.count);
+    try std.testing.expectEqual(0, vm.data_stack.count);
 }
