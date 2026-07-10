@@ -181,3 +181,15 @@ test "r@ copies the top element from the return stack to the data stack" {
     try std.testing.expectEqual(42, vm.data_stack.pop());
     try std.testing.expectEqual(42, vm.return_stack.pop());
 }
+
+test "here puts the current dictionary cursor on the data stack" {
+    var vm = Vm{};
+
+    try interpret(&vm, "here");
+
+    try std.testing.expectEqual(0, vm.data_stack.pop());
+
+    try interpret(&vm, "1 , here");
+
+    try std.testing.expectEqual(1, vm.data_stack.pop());
+}

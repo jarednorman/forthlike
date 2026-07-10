@@ -5,6 +5,7 @@ pub const ForthError = error{
     StackUnderflow,
     UnknownWord,
     ZeroDivision,
+    DictionaryFull,
 };
 
 pub const Stack = struct {
@@ -33,6 +34,8 @@ pub const Stack = struct {
 pub const Vm = struct {
     data_stack: Stack = Stack{},
     return_stack: Stack = Stack{},
+    dictionary: [256]i64 = undefined,
+    dictionary_cursor: usize = 0,
 };
 
 test "stack push and pop" {

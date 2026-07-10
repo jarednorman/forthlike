@@ -25,6 +25,8 @@ const dictionary = [_]Word{
     .{ .name = ">r", .func = toReturnStack },
     .{ .name = "r>", .func = fromReturnStack },
     .{ .name = "r@", .func = copyFromReturnStack },
+    .{ .name = ",", .func = comma },
+    .{ .name = "here", .func = here },
 };
 
 fn dup(vm: *Vm) ForthError!void {
@@ -131,6 +133,21 @@ fn copyFromReturnStack(vm: *Vm) ForthError!void {
 
     try vm.return_stack.push(value);
     try vm.data_stack.push(value);
+}
+
+fn comma(vm: *Vm) ForthError!void {
+    const value = try vm.data_stack.pop();
+
+    if (vm.dictionary_cursor >= vm.dictionary.len) {
+        return ForthError.DictionaryFull;
+    }
+
+    vm.dictionary[vm.dictionary_cursor] = value;
+    vm.dictionary_cursor += 1;
+}
+
+fn here(vm: *Vm) ForthError!void {
+    try vm.data_stack.push(@intCast(vm.dictionary_cursor));
 }
 
 pub fn find(name: []const u8) ?Word {
