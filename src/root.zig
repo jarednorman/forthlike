@@ -7,11 +7,14 @@ const ForthError = vm_mod.ForthError;
 pub const Vm = vm_mod.Vm;
 
 pub fn interpret(vm: *Vm, source: []const u8) ForthError!void {
-    var words = std.mem.tokenizeAny(u8, source, " \t\r\n");
+    vm.tokens = std.mem.tokenizeAny(u8, source, " \t\r\n");
 
-    while (words.next()) |word| {
-        if (primitives.find(word)) |entry| {
-            try entry.func(vm);
+    while (vm.tokens.next()) |word| {
+        if (primitives.find(vm, word)) |entry| {
+            switch (entry) {
+                .primitive => |primitive| try primitive.func(vm),
+                .runtime => |runtime_word| try vm.data_stack.push(@intCast(runtime_word.address)),
+            }
         } else if (std.fmt.parseInt(i64, word, 10)) |number| {
             try vm.data_stack.push(number);
         } else |_| {
@@ -190,6 +193,79 @@ test "here puts the current dictionary cursor on the data stack" {
     try std.testing.expectEqual(0, vm.data_stack.pop());
 
     try interpret(&vm, "1 , here");
+
+    try std.testing.expectEqual(1, vm.data_stack.pop());
+}
+
+test "create copies the name into names storage" {
+    var vm = Vm{};
+
+    var buf: [10]u8 = undefined;
+    @memcpy(&buf, "create foo");
+
+    try interpret(&vm, buf[0..]);
+
+    try std.testing.expectEqualSlices(u8, "foo", vm.names[0..3]);
+    try std.testing.expectEqual(3, vm.names_cursor);
+
+    @memset(&buf, 0);
+
+    try std.testing.expectEqualSlices(u8, "foo", vm.names[0..3]);
+}
+
+test "create returns an error when no name is given" {
+    var vm = Vm{};
+
+    try std.testing.expectError(ForthError.MissingName, interpret(&vm, "create"));
+}
+
+test "create advances the names cursor across multiple calls" {
+    var vm = Vm{};
+
+    try interpret(&vm, "create foo create bar");
+
+    try std.testing.expectEqualSlices(u8, "foo", vm.names[0..3]);
+    try std.testing.expectEqualSlices(u8, "bar", vm.names[3..6]);
+    try std.testing.expectEqual(6, vm.names_cursor);
+}
+
+test "create words can be looked up" {
+    var vm = Vm{};
+
+    try interpret(&vm, "create foo foo");
+
+    try std.testing.expectEqual(0, vm.data_stack.pop());
+}
+
+test "create captures address" {
+    var vm = Vm{};
+
+    try interpret(&vm, "1 , 2 , create foo foo");
+
+    try std.testing.expectEqual(2, vm.data_stack.pop());
+}
+
+test "create pushes the address, not contents" {
+    var vm = Vm{};
+
+    try interpret(&vm, "create foo 99 , foo");
+
+    try std.testing.expectEqual(0, vm.data_stack.pop());
+    try std.testing.expectEqual(99, vm.dictionary[0]);
+}
+
+test "runtime words shadow primitives" {
+    var vm = Vm{};
+
+    try interpret(&vm, "create dup dup");
+
+    try std.testing.expectEqual(0, vm.data_stack.pop());
+}
+
+test "newest runtime definition is used" {
+    var vm = Vm{};
+
+    try interpret(&vm, "create foo 1 , create foo foo");
 
     try std.testing.expectEqual(1, vm.data_stack.pop());
 }

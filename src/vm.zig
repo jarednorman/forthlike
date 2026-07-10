@@ -6,6 +6,13 @@ pub const ForthError = error{
     UnknownWord,
     ZeroDivision,
     DictionaryFull,
+    NameStorageFull,
+    MissingName,
+};
+
+pub const RuntimeWord = struct {
+    name: []const u8,
+    address: usize,
 };
 
 pub const Stack = struct {
@@ -36,6 +43,35 @@ pub const Vm = struct {
     return_stack: Stack = Stack{},
     dictionary: [256]i64 = undefined,
     dictionary_cursor: usize = 0,
+    tokens: std.mem.TokenIterator(u8, .any) = undefined,
+    names: [1024]u8 = undefined,
+    names_cursor: usize = 0,
+    runtime_words: [64]RuntimeWord = undefined,
+    runtime_words_cursor: usize = 0,
+
+    pub fn storeName(self: *Vm, name: []const u8) ForthError![]const u8 {
+        if (self.names_cursor + name.len > self.names.len) {
+            return ForthError.NameStorageFull;
+        }
+
+        const start = self.names_cursor;
+        @memcpy(self.names[start..][0..name.len], name);
+        self.names_cursor += name.len;
+
+        return self.names[start..self.names_cursor];
+    }
+
+    pub fn defineRuntimeWord(self: *Vm, name: []const u8, address: usize) ForthError!void {
+        if (self.runtime_words_cursor >= self.runtime_words.len) {
+            return ForthError.DictionaryFull;
+        }
+
+        self.runtime_words[self.runtime_words_cursor] = RuntimeWord{
+            .name = name,
+            .address = address,
+        };
+        self.runtime_words_cursor += 1;
+    }
 };
 
 test "stack push and pop" {
@@ -52,6 +88,16 @@ test "stack underflow" {
     var stack = Stack{};
 
     try std.testing.expectError(error.StackUnderflow, stack.pop());
+}
+
+test "defineRuntimeWord returns an error when the runtime words table is full" {
+    var vm = Vm{};
+
+    for (0..vm.runtime_words.len) |_| {
+        try vm.defineRuntimeWord("x", 0);
+    }
+
+    try std.testing.expectError(ForthError.DictionaryFull, vm.defineRuntimeWord("x", 0));
 }
 
 test "stack overflow" {

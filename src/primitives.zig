@@ -9,6 +9,11 @@ pub const Word = struct {
     func: *const fn (vm: *Vm) ForthError!void,
 };
 
+pub const Entry = union(enum) {
+    primitive: Word,
+    runtime: vm_mod.RuntimeWord,
+};
+
 const dictionary = [_]Word{
     .{ .name = "dup", .func = dup },
     .{ .name = "drop", .func = drop },
@@ -27,6 +32,7 @@ const dictionary = [_]Word{
     .{ .name = "r@", .func = copyFromReturnStack },
     .{ .name = ",", .func = comma },
     .{ .name = "here", .func = here },
+    .{ .name = "create", .func = create },
 };
 
 fn dup(vm: *Vm) ForthError!void {
@@ -150,10 +156,26 @@ fn here(vm: *Vm) ForthError!void {
     try vm.data_stack.push(@intCast(vm.dictionary_cursor));
 }
 
-pub fn find(name: []const u8) ?Word {
-    for (dictionary) |word| {
-        if (std.mem.eql(u8, word.name, name)) {
-            return word;
+fn create(vm: *Vm) ForthError!void {
+    const name = vm.tokens.next() orelse return ForthError.MissingName;
+
+    const stored_name = try vm.storeName(name);
+    try vm.defineRuntimeWord(stored_name, vm.dictionary_cursor);
+}
+
+pub fn find(vm: *const Vm, name: []const u8) ?Entry {
+    var i = vm.runtime_words_cursor;
+    while (i > 0) {
+        i -= 1;
+        const runtime_word = vm.runtime_words[i];
+        if (std.mem.eql(u8, runtime_word.name, name)) {
+            return Entry{ .runtime = runtime_word };
+        }
+    }
+
+    for (dictionary) |primitive| {
+        if (std.mem.eql(u8, primitive.name, name)) {
+            return Entry{ .primitive = primitive };
         }
     }
 
