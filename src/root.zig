@@ -1,10 +1,10 @@
 const std = @import("std");
 
-const stack_mod = @import("stack.zig");
+const vm_mod = @import("vm.zig");
 const primitives = @import("primitives.zig");
 
-const ForthError = stack_mod.ForthError;
-pub const Vm = stack_mod.Vm;
+const ForthError = vm_mod.ForthError;
+pub const Vm = vm_mod.Vm;
 
 pub fn interpret(vm: *Vm, source: []const u8) ForthError!void {
     var words = std.mem.tokenizeAny(u8, source, " \t\r\n");

@@ -1,8 +1,8 @@
 const std = @import("std");
 
-const stack_mod = @import("stack.zig");
-const ForthError = stack_mod.ForthError;
-const Vm = stack_mod.Vm;
+const vm_mod = @import("vm.zig");
+const ForthError = vm_mod.ForthError;
+const Vm = vm_mod.Vm;
 
 pub const Word = struct {
     name: []const u8,
