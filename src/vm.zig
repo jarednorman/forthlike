@@ -23,6 +23,11 @@ pub fn doData(vm: *Vm, self: *const Word) ForthError!void {
     try vm.data_stack.push(@intCast(self.address));
 }
 
+pub fn doCol(vm: *Vm, self: *const Word) ForthError!void {
+    try vm.return_stack.push(@intCast(vm.instruction_pointer));
+    vm.instruction_pointer = self.address;
+}
+
 pub const Stack = struct {
     storage: [16]i64 = undefined,
     count: usize = 0,
@@ -136,6 +141,16 @@ test "defineWord returns an error when the words table is full" {
     }
 
     try std.testing.expectError(ForthError.WordsFull, vm.defineWord("x", doData, 0));
+}
+
+test "doCol saves the instruction pointer and jumps to the word's body" {
+    var vm = Vm{};
+    const word = Word{ .name = "body", .code = doCol, .address = 7 };
+
+    try doCol(&vm, &word);
+
+    try std.testing.expectEqual(7, vm.instruction_pointer);
+    try std.testing.expectEqual(Vm.sentinel, vm.return_stack.pop());
 }
 
 test "stack overflow" {

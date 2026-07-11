@@ -29,6 +29,7 @@ const builtins = [_]Primitive{
     .{ .name = ",", .func = comma },
     .{ .name = "here", .func = here },
     .{ .name = "create", .func = create },
+    .{ .name = "exit", .func = exit },
 };
 
 fn dup(vm: *Vm, _: *const Word) ForthError!void {
@@ -157,6 +158,12 @@ fn create(vm: *Vm, _: *const Word) ForthError!void {
 
     const stored_name = try vm.storeName(name);
     try vm.defineWord(stored_name, vm_mod.doData, vm.cells_cursor);
+}
+
+fn exit(vm: *Vm, _: *const Word) ForthError!void {
+    const return_address = try vm.return_stack.pop();
+
+    vm.instruction_pointer = @intCast(return_address);
 }
 
 pub fn install(vm: *Vm) ForthError!void {

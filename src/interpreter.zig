@@ -188,6 +188,12 @@ test "r@ copies the top element from the return stack to the data stack" {
     try std.testing.expectEqual(42, vm.return_stack.pop());
 }
 
+test "exit returns an error when the return stack is empty" {
+    var vm = try newVm();
+
+    try std.testing.expectError(ForthError.StackUnderflow, interpret(&vm, "exit"));
+}
+
 test "here puts the current cells cursor on the data stack" {
     var vm = try newVm();
 
