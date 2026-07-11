@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The mental model is **two machines, one membrane**: the engine is the host and drives the Forth VM as a guest, reentering it each frame, while the VM reaches back into the engine only through *primitives* (Forth words backed by Zig functions). This is experimental; the implementation is still being explored, so treat the design as open rather than settled.
 
+One boundary is settled: the `forthlike` module (the Forth core, rooted at `src/root.zig`) **never imports raylib**. Engine-facing words are installed from the executable's side of the membrane via `defineWord`; they do not go in the core's builtin table.
+
 ## How to help
 
 This is a **learning exercise for the user**, who is new to both Forth and Zig. The user writes the code themselves. By default, **do not write or edit code** in `src/` (or other source files) — no unprompted first drafts, scaffolding, or example slices meant to be pasted in.
