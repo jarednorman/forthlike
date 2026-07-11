@@ -4,7 +4,7 @@ const vm_mod = @import("vm.zig");
 const primitives = @import("primitives.zig");
 
 const ForthError = vm_mod.ForthError;
-pub const Vm = vm_mod.Vm;
+const Vm = vm_mod.Vm;
 
 pub fn newVm() ForthError!Vm {
     var vm = Vm{};
