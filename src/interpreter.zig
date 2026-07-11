@@ -279,13 +279,24 @@ test "newest runtime definition is used" {
     try std.testing.expectEqual(1, vm.data_stack.pop());
 }
 
+fn compileCell(vm: *Vm, value: i64) void {
+    vm.cells[vm.cells_cursor] = value;
+    vm.cells_cursor += 1;
+}
+
 fn compileWord(vm: *Vm, name: []const u8, body: []const []const u8) ForthError!void {
     const body_start = vm.cells_cursor;
 
-    for (body) |word_name| {
-        const xt = vm.findXt(word_name) orelse return ForthError.UnknownWord;
-        vm.cells[vm.cells_cursor] = @intCast(xt);
-        vm.cells_cursor += 1;
+    for (body) |token| {
+        if (vm.findXt(token)) |xt| {
+            compileCell(vm, @intCast(xt));
+        } else if (std.fmt.parseInt(i64, token, 10)) |number| {
+            const lit_xt = vm.findXt("lit") orelse return ForthError.UnknownWord;
+            compileCell(vm, @intCast(lit_xt));
+            compileCell(vm, number);
+        } else |_| {
+            return ForthError.UnknownWord;
+        }
     }
 
     try vm.defineWord(name, vm_mod.doCol, body_start);
@@ -312,6 +323,30 @@ test "compiled words can call other compiled words" {
     try interpret(&vm, "3 sq2");
 
     try std.testing.expectEqual(81, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "compiled words can push literals" {
+    var vm = try newVm();
+
+    try compileWord(&vm, "five", &.{ "5", "exit" });
+
+    try interpret(&vm, "five");
+
+    try std.testing.expectEqual(5, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "literals compose with words in a compiled body" {
+    var vm = try newVm();
+
+    try compileWord(&vm, "scale", &.{ "10", "*", "exit" });
+
+    try interpret(&vm, "7 scale");
+
+    try std.testing.expectEqual(70, vm.data_stack.pop());
     try std.testing.expectEqual(0, vm.data_stack.count);
     try std.testing.expectEqual(0, vm.return_stack.count);
 }

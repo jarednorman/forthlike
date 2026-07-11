@@ -30,6 +30,7 @@ const builtins = [_]Primitive{
     .{ .name = "here", .func = here },
     .{ .name = "create", .func = create },
     .{ .name = "exit", .func = exit },
+    .{ .name = "lit", .func = lit },
 };
 
 fn dup(vm: *Vm, _: *const Word) ForthError!void {
@@ -164,6 +165,14 @@ fn exit(vm: *Vm, _: *const Word) ForthError!void {
     const return_address = try vm.return_stack.pop();
 
     vm.instruction_pointer = @intCast(return_address);
+}
+
+fn lit(vm: *Vm, _: *const Word) ForthError!void {
+    // Compile-only; a bare "lit" at top level panics (ip is at the sentinel).
+    const value = vm.cells[vm.instruction_pointer];
+    vm.instruction_pointer += 1;
+
+    try vm.data_stack.push(value);
 }
 
 pub fn install(vm: *Vm) ForthError!void {
