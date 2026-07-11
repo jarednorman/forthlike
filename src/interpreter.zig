@@ -188,7 +188,7 @@ test "r@ copies the top element from the return stack to the data stack" {
     try std.testing.expectEqual(42, vm.return_stack.pop());
 }
 
-test "here puts the current dictionary cursor on the data stack" {
+test "here puts the current cells cursor on the data stack" {
     var vm = try newVm();
 
     try interpret(&vm, "here");
@@ -254,7 +254,7 @@ test "create pushes the address, not contents" {
     try interpret(&vm, "create foo 99 , foo");
 
     try std.testing.expectEqual(0, vm.data_stack.pop());
-    try std.testing.expectEqual(99, vm.dictionary[0]);
+    try std.testing.expectEqual(99, vm.cells[0]);
 }
 
 test "runtime words shadow primitives" {

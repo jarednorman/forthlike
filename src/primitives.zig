@@ -140,23 +140,23 @@ fn copyFromReturnStack(vm: *Vm, _: *const Word) ForthError!void {
 fn comma(vm: *Vm, _: *const Word) ForthError!void {
     const value = try vm.data_stack.pop();
 
-    if (vm.dictionary_cursor >= vm.dictionary.len) {
+    if (vm.cells_cursor >= vm.cells.len) {
         return ForthError.DictionaryFull;
     }
 
-    vm.dictionary[vm.dictionary_cursor] = value;
-    vm.dictionary_cursor += 1;
+    vm.cells[vm.cells_cursor] = value;
+    vm.cells_cursor += 1;
 }
 
 fn here(vm: *Vm, _: *const Word) ForthError!void {
-    try vm.data_stack.push(@intCast(vm.dictionary_cursor));
+    try vm.data_stack.push(@intCast(vm.cells_cursor));
 }
 
 fn create(vm: *Vm, _: *const Word) ForthError!void {
     const name = vm.tokens.next() orelse return ForthError.MissingName;
 
     const stored_name = try vm.storeName(name);
-    try vm.defineWord(stored_name, vm_mod.doData, vm.dictionary_cursor);
+    try vm.defineWord(stored_name, vm_mod.doData, vm.cells_cursor);
 }
 
 pub fn install(vm: *Vm) ForthError!void {
