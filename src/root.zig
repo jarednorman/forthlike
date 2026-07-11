@@ -17,10 +17,7 @@ pub fn interpret(vm: *Vm, source: []const u8) ForthError!void {
 
     while (vm.tokens.next()) |word| {
         if (vm.findWord(word)) |entry| {
-            switch (entry.behavior) {
-                .primitive => |func| try func(vm),
-                .data => |address| try vm.data_stack.push(@intCast(address)),
-            }
+            try entry.code(vm, entry);
         } else if (std.fmt.parseInt(i64, word, 10)) |number| {
             try vm.data_stack.push(number);
         } else |_| {

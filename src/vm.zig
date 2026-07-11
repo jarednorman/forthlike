@@ -12,13 +12,15 @@ pub const ForthError = error{
 
 pub const Word = struct {
     name: []const u8,
-    behavior: Behavior,
+    code: Code,
+    address: usize,
 };
 
-pub const Behavior = union(enum) {
-    primitive: *const fn (vm: *Vm) ForthError!void,
-    data: usize,
-};
+pub const Code = *const fn (vm: *Vm, self: *const Word) ForthError!void;
+
+pub fn doData(vm: *Vm, self: *const Word) ForthError!void {
+    try vm.data_stack.push(@intCast(self.address));
+}
 
 pub const Stack = struct {
     storage: [16]i64 = undefined,
@@ -66,25 +68,25 @@ pub const Vm = struct {
         return self.names[start..self.names_cursor];
     }
 
-    pub fn defineWord(self: *Vm, name: []const u8, behavior: Behavior) ForthError!void {
+    pub fn defineWord(self: *Vm, name: []const u8, code: Code, address: usize) ForthError!void {
         if (self.words_cursor >= self.words.len) {
             return ForthError.DictionaryFull;
         }
 
         self.words[self.words_cursor] = Word{
             .name = name,
-            .behavior = behavior,
+            .code = code,
+            .address = address,
         };
         self.words_cursor += 1;
     }
 
-    pub fn findWord(self: *const Vm, name: []const u8) ?Word {
+    pub fn findWord(self: *const Vm, name: []const u8) ?*const Word {
         var i = self.words_cursor;
         while (i > 0) {
             i -= 1;
-            const word = self.words[i];
-            if (std.mem.eql(u8, word.name, name)) {
-                return word;
+            if (std.mem.eql(u8, self.words[i].name, name)) {
+                return &self.words[i];
             }
         }
 
@@ -112,10 +114,10 @@ test "defineWord returns an error when the words table is full" {
     var vm = Vm{};
 
     for (0..vm.words.len) |_| {
-        try vm.defineWord("x", .{ .data = 0 });
+        try vm.defineWord("x", doData, 0);
     }
 
-    try std.testing.expectError(ForthError.DictionaryFull, vm.defineWord("x", .{ .data = 0 }));
+    try std.testing.expectError(ForthError.DictionaryFull, vm.defineWord("x", doData, 0));
 }
 
 test "stack overflow" {
