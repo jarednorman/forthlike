@@ -47,15 +47,32 @@ pub const Stack = struct {
 };
 
 pub const Vm = struct {
+    const cell_count = 256;
+    const sentinel = cell_count;
+
     data_stack: Stack = Stack{},
     return_stack: Stack = Stack{},
-    cells: [256]i64 = undefined,
+    cells: [cell_count]i64 = undefined,
     cells_cursor: usize = 0,
     tokens: std.mem.TokenIterator(u8, .any) = undefined,
     names: [1024]u8 = undefined,
     names_cursor: usize = 0,
     words: [64]Word = undefined,
     words_cursor: usize = 0,
+    instruction_pointer: usize = sentinel,
+
+    pub fn execute(self: *Vm, word: *const Word) ForthError!void {
+        self.instruction_pointer = sentinel;
+
+        try word.code(self, word);
+
+        while (self.instruction_pointer != sentinel) {
+            const xt = self.cells[self.instruction_pointer];
+            self.instruction_pointer += 1;
+            const next_word = &self.words[@intCast(xt)];
+            try next_word.code(self, next_word);
+        }
+    }
 
     pub fn storeName(self: *Vm, name: []const u8) ForthError![]const u8 {
         if (self.names_cursor + name.len > self.names.len) {
