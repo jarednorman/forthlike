@@ -278,3 +278,40 @@ test "newest runtime definition is used" {
 
     try std.testing.expectEqual(1, vm.data_stack.pop());
 }
+
+fn compileWord(vm: *Vm, name: []const u8, body: []const []const u8) ForthError!void {
+    const body_start = vm.cells_cursor;
+
+    for (body) |word_name| {
+        const xt = vm.findXt(word_name) orelse return ForthError.UnknownWord;
+        vm.cells[vm.cells_cursor] = @intCast(xt);
+        vm.cells_cursor += 1;
+    }
+
+    try vm.defineWord(name, vm_mod.doCol, body_start);
+}
+
+test "a compiled word executes its body" {
+    var vm = try newVm();
+
+    try compileWord(&vm, "sq", &.{ "dup", "*", "exit" });
+
+    try interpret(&vm, "3 sq");
+
+    try std.testing.expectEqual(9, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "compiled words can call other compiled words" {
+    var vm = try newVm();
+
+    try compileWord(&vm, "sq", &.{ "dup", "*", "exit" });
+    try compileWord(&vm, "sq2", &.{ "sq", "sq", "exit" });
+
+    try interpret(&vm, "3 sq2");
+
+    try std.testing.expectEqual(81, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}

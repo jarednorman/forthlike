@@ -104,16 +104,21 @@ pub const Vm = struct {
         self.words_cursor += 1;
     }
 
-    pub fn findWord(self: *const Vm, name: []const u8) ?*const Word {
+    pub fn findXt(self: *const Vm, name: []const u8) ?usize {
         var i = self.words_cursor;
         while (i > 0) {
             i -= 1;
             if (std.mem.eql(u8, self.words[i].name, name)) {
-                return &self.words[i];
+                return i;
             }
         }
 
         return null;
+    }
+
+    pub fn findWord(self: *const Vm, name: []const u8) ?*const Word {
+        const xt = self.findXt(name) orelse return null;
+        return &self.words[xt];
     }
 };
 
