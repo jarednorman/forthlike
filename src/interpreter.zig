@@ -350,3 +350,74 @@ test "literals compose with words in a compiled body" {
     try std.testing.expectEqual(0, vm.data_stack.count);
     try std.testing.expectEqual(0, vm.return_stack.count);
 }
+
+test "branch jumps over code" {
+    var vm = try newVm();
+
+    const branch_xt: i64 = @intCast(vm.findXt("branch").?);
+    const lit_xt: i64 = @intCast(vm.findXt("lit").?);
+    const exit_xt: i64 = @intCast(vm.findXt("exit").?);
+
+    const body_start = vm.cells_cursor;
+
+    compileCell(&vm, branch_xt);
+    compileCell(&vm, @intCast(body_start + 5));
+    compileCell(&vm, lit_xt);
+    compileCell(&vm, 999);
+    compileCell(&vm, exit_xt);
+    compileCell(&vm, lit_xt); // body_start + 5
+    compileCell(&vm, 42);
+    compileCell(&vm, exit_xt);
+
+    try vm.defineWord("skip", vm_mod.doCol, body_start);
+
+    try interpret(&vm, "skip");
+
+    try std.testing.expectEqual(42, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+// choose ( flag -- n ) yields 10 when the flag is true, 20 when it is false.
+fn defineChoose(vm: *Vm) ForthError!void {
+    const zero_branch_xt: i64 = @intCast(vm.findXt("0branch").?);
+    const lit_xt: i64 = @intCast(vm.findXt("lit").?);
+    const exit_xt: i64 = @intCast(vm.findXt("exit").?);
+
+    const body_start = vm.cells_cursor;
+
+    compileCell(vm, zero_branch_xt);
+    compileCell(vm, @intCast(body_start + 5));
+    compileCell(vm, lit_xt);
+    compileCell(vm, 10);
+    compileCell(vm, exit_xt);
+    compileCell(vm, lit_xt); // body_start + 5
+    compileCell(vm, 20);
+    compileCell(vm, exit_xt);
+
+    try vm.defineWord("choose", vm_mod.doCol, body_start);
+}
+
+test "0branch jumps when the flag is zero" {
+    var vm = try newVm();
+
+    try defineChoose(&vm);
+
+    try interpret(&vm, "0 choose");
+
+    try std.testing.expectEqual(20, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "0branch falls through when the flag is nonzero" {
+    var vm = try newVm();
+
+    try defineChoose(&vm);
+
+    try interpret(&vm, "1 choose");
+
+    try std.testing.expectEqual(10, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}

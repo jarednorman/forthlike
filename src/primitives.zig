@@ -31,6 +31,8 @@ const builtins = [_]Primitive{
     .{ .name = "create", .func = create },
     .{ .name = "exit", .func = exit },
     .{ .name = "lit", .func = lit },
+    .{ .name = "branch", .func = branch },
+    .{ .name = "0branch", .func = conditionalBranch },
 };
 
 fn dup(vm: *Vm, _: *const Word) ForthError!void {
@@ -173,6 +175,26 @@ fn lit(vm: *Vm, _: *const Word) ForthError!void {
     vm.instruction_pointer += 1;
 
     try vm.data_stack.push(value);
+}
+
+fn branch(vm: *Vm, _: *const Word) ForthError!void {
+    // Compile-only; a bare "branch" at top level panics (ip is at the sentinel).
+    const target = vm.cells[vm.instruction_pointer];
+
+    vm.instruction_pointer = @intCast(target);
+}
+
+fn conditionalBranch(vm: *Vm, _: *const Word) ForthError!void {
+    // Compile-only; a bare "0branch" at top level panics (ip is at the sentinel).
+    const target = vm.cells[vm.instruction_pointer];
+
+    const condition = try vm.data_stack.pop();
+
+    if (condition == 0) {
+        vm.instruction_pointer = @intCast(target);
+    } else {
+        vm.instruction_pointer += 1;
+    }
 }
 
 pub fn install(vm: *Vm) ForthError!void {
