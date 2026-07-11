@@ -4,17 +4,12 @@ const vm_mod = @import("vm.zig");
 const ForthError = vm_mod.ForthError;
 const Vm = vm_mod.Vm;
 
-pub const Word = struct {
+const Primitive = struct {
     name: []const u8,
     func: *const fn (vm: *Vm) ForthError!void,
 };
 
-pub const Entry = union(enum) {
-    primitive: Word,
-    runtime: vm_mod.RuntimeWord,
-};
-
-const dictionary = [_]Word{
+const builtins = [_]Primitive{
     .{ .name = "dup", .func = dup },
     .{ .name = "drop", .func = drop },
     .{ .name = "swap", .func = swap },
@@ -160,24 +155,11 @@ fn create(vm: *Vm) ForthError!void {
     const name = vm.tokens.next() orelse return ForthError.MissingName;
 
     const stored_name = try vm.storeName(name);
-    try vm.defineRuntimeWord(stored_name, vm.dictionary_cursor);
+    try vm.defineWord(stored_name, .{ .data = vm.dictionary_cursor });
 }
 
-pub fn find(vm: *const Vm, name: []const u8) ?Entry {
-    var i = vm.runtime_words_cursor;
-    while (i > 0) {
-        i -= 1;
-        const runtime_word = vm.runtime_words[i];
-        if (std.mem.eql(u8, runtime_word.name, name)) {
-            return Entry{ .runtime = runtime_word };
-        }
+pub fn install(vm: *Vm) ForthError!void {
+    for (builtins) |builtin| {
+        try vm.defineWord(builtin.name, .{ .primitive = builtin.func });
     }
-
-    for (dictionary) |primitive| {
-        if (std.mem.eql(u8, primitive.name, name)) {
-            return Entry{ .primitive = primitive };
-        }
-    }
-
-    return null;
 }

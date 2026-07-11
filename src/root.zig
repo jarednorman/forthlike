@@ -6,14 +6,20 @@ const primitives = @import("primitives.zig");
 const ForthError = vm_mod.ForthError;
 pub const Vm = vm_mod.Vm;
 
+pub fn newVm() ForthError!Vm {
+    var vm = Vm{};
+    try primitives.install(&vm);
+    return vm;
+}
+
 pub fn interpret(vm: *Vm, source: []const u8) ForthError!void {
     vm.tokens = std.mem.tokenizeAny(u8, source, " \t\r\n");
 
     while (vm.tokens.next()) |word| {
-        if (primitives.find(vm, word)) |entry| {
-            switch (entry) {
-                .primitive => |primitive| try primitive.func(vm),
-                .runtime => |runtime_word| try vm.data_stack.push(@intCast(runtime_word.address)),
+        if (vm.findWord(word)) |entry| {
+            switch (entry.behavior) {
+                .primitive => |func| try func(vm),
+                .data => |address| try vm.data_stack.push(@intCast(address)),
             }
         } else if (std.fmt.parseInt(i64, word, 10)) |number| {
             try vm.data_stack.push(number);
@@ -24,7 +30,7 @@ pub fn interpret(vm: *Vm, source: []const u8) ForthError!void {
 }
 
 test "interpet pushes numbers onto the data stack in order" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 10 2 4");
 
@@ -35,13 +41,13 @@ test "interpet pushes numbers onto the data stack in order" {
 }
 
 test "interpet returns an error for unknown words" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try std.testing.expectError(ForthError.UnknownWord, interpret(&vm, "1 2 unknown_word"));
 }
 
 test "dup duplicates the top of the data stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 2 dup");
 
@@ -51,7 +57,7 @@ test "dup duplicates the top of the data stack" {
 }
 
 test "drop drops the top of the stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 2 drop");
 
@@ -59,7 +65,7 @@ test "drop drops the top of the stack" {
 }
 
 test "swap swaps the top two items on the stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 2 swap");
 
@@ -68,7 +74,7 @@ test "swap swaps the top two items on the stack" {
 }
 
 test "over copies the second item on the stack to the top" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 2 over");
 
@@ -78,7 +84,7 @@ test "over copies the second item on the stack to the top" {
 }
 
 test "add adds the top two items on the stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 2 +");
 
@@ -86,7 +92,7 @@ test "add adds the top two items on the stack" {
 }
 
 test "sub subtracts the top two items on the stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "2 1 -");
 
@@ -94,7 +100,7 @@ test "sub subtracts the top two items on the stack" {
 }
 
 test "mul multiplies the top two items on the stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "2 3 *");
 
@@ -102,7 +108,7 @@ test "mul multiplies the top two items on the stack" {
 }
 
 test "/mod leaves the remainder and quotient on the stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "10 3 /mod");
 
@@ -111,7 +117,7 @@ test "/mod leaves the remainder and quotient on the stack" {
 }
 
 test "= leaves -1 on the stack when the top two elements are equal" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 1 =");
 
@@ -119,7 +125,7 @@ test "= leaves -1 on the stack when the top two elements are equal" {
 }
 
 test "= leaves 0 on the stack when the top two elements are not equal" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 2 =");
 
@@ -127,7 +133,7 @@ test "= leaves 0 on the stack when the top two elements are not equal" {
 }
 
 test "< leaves -1 on the stack when the second element is less than the top element" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 2 <");
 
@@ -135,7 +141,7 @@ test "< leaves -1 on the stack when the second element is less than the top elem
 }
 
 test "0= leaves -1 on the stack when the top element is 0" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "0 0=");
 
@@ -143,7 +149,7 @@ test "0= leaves -1 on the stack when the top element is 0" {
 }
 
 test "0= leaves 0 on the stack when the top element is not 0" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 0=");
 
@@ -151,7 +157,7 @@ test "0= leaves 0 on the stack when the top element is not 0" {
 }
 
 test ". pops the top element and prints it" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "42 .");
 
@@ -159,7 +165,7 @@ test ". pops the top element and prints it" {
 }
 
 test ">r moves the top element from the data stack to the return stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "42 >r");
 
@@ -168,7 +174,7 @@ test ">r moves the top element from the data stack to the return stack" {
 }
 
 test "r> moves the top element from the return stack to the data stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "42 >r r>");
 
@@ -177,7 +183,7 @@ test "r> moves the top element from the return stack to the data stack" {
 }
 
 test "r@ copies the top element from the return stack to the data stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "42 >r r@");
 
@@ -186,7 +192,7 @@ test "r@ copies the top element from the return stack to the data stack" {
 }
 
 test "here puts the current dictionary cursor on the data stack" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "here");
 
@@ -198,7 +204,7 @@ test "here puts the current dictionary cursor on the data stack" {
 }
 
 test "create copies the name into names storage" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     var buf: [10]u8 = undefined;
     @memcpy(&buf, "create foo");
@@ -214,13 +220,13 @@ test "create copies the name into names storage" {
 }
 
 test "create returns an error when no name is given" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try std.testing.expectError(ForthError.MissingName, interpret(&vm, "create"));
 }
 
 test "create advances the names cursor across multiple calls" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "create foo create bar");
 
@@ -230,7 +236,7 @@ test "create advances the names cursor across multiple calls" {
 }
 
 test "create words can be looked up" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "create foo foo");
 
@@ -238,7 +244,7 @@ test "create words can be looked up" {
 }
 
 test "create captures address" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "1 , 2 , create foo foo");
 
@@ -246,7 +252,7 @@ test "create captures address" {
 }
 
 test "create pushes the address, not contents" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "create foo 99 , foo");
 
@@ -255,7 +261,7 @@ test "create pushes the address, not contents" {
 }
 
 test "runtime words shadow primitives" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "create dup dup");
 
@@ -263,7 +269,7 @@ test "runtime words shadow primitives" {
 }
 
 test "newest runtime definition is used" {
-    var vm = Vm{};
+    var vm = try newVm();
 
     try interpret(&vm, "create foo 1 , create foo foo");
 

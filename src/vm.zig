@@ -10,9 +10,14 @@ pub const ForthError = error{
     MissingName,
 };
 
-pub const RuntimeWord = struct {
+pub const Word = struct {
     name: []const u8,
-    address: usize,
+    behavior: Behavior,
+};
+
+pub const Behavior = union(enum) {
+    primitive: *const fn (vm: *Vm) ForthError!void,
+    data: usize,
 };
 
 pub const Stack = struct {
@@ -46,8 +51,8 @@ pub const Vm = struct {
     tokens: std.mem.TokenIterator(u8, .any) = undefined,
     names: [1024]u8 = undefined,
     names_cursor: usize = 0,
-    runtime_words: [64]RuntimeWord = undefined,
-    runtime_words_cursor: usize = 0,
+    words: [64]Word = undefined,
+    words_cursor: usize = 0,
 
     pub fn storeName(self: *Vm, name: []const u8) ForthError![]const u8 {
         if (self.names_cursor + name.len > self.names.len) {
@@ -61,16 +66,29 @@ pub const Vm = struct {
         return self.names[start..self.names_cursor];
     }
 
-    pub fn defineRuntimeWord(self: *Vm, name: []const u8, address: usize) ForthError!void {
-        if (self.runtime_words_cursor >= self.runtime_words.len) {
+    pub fn defineWord(self: *Vm, name: []const u8, behavior: Behavior) ForthError!void {
+        if (self.words_cursor >= self.words.len) {
             return ForthError.DictionaryFull;
         }
 
-        self.runtime_words[self.runtime_words_cursor] = RuntimeWord{
+        self.words[self.words_cursor] = Word{
             .name = name,
-            .address = address,
+            .behavior = behavior,
         };
-        self.runtime_words_cursor += 1;
+        self.words_cursor += 1;
+    }
+
+    pub fn findWord(self: *const Vm, name: []const u8) ?Word {
+        var i = self.words_cursor;
+        while (i > 0) {
+            i -= 1;
+            const word = self.words[i];
+            if (std.mem.eql(u8, word.name, name)) {
+                return word;
+            }
+        }
+
+        return null;
     }
 };
 
@@ -90,14 +108,14 @@ test "stack underflow" {
     try std.testing.expectError(error.StackUnderflow, stack.pop());
 }
 
-test "defineRuntimeWord returns an error when the runtime words table is full" {
+test "defineWord returns an error when the words table is full" {
     var vm = Vm{};
 
-    for (0..vm.runtime_words.len) |_| {
-        try vm.defineRuntimeWord("x", 0);
+    for (0..vm.words.len) |_| {
+        try vm.defineWord("x", .{ .data = 0 });
     }
 
-    try std.testing.expectError(ForthError.DictionaryFull, vm.defineRuntimeWord("x", 0));
+    try std.testing.expectError(ForthError.DictionaryFull, vm.defineWord("x", .{ .data = 0 }));
 }
 
 test "stack overflow" {

@@ -29,7 +29,10 @@ fn runGame() void {
 }
 
 fn runRepl(io: std.Io) void {
-    var vm = forthlike.Vm{};
+    var vm = forthlike.newVm() catch |err| {
+        std.debug.print("Error initializing VM: {}\n", .{err});
+        return;
+    };
     var read_buffer: [256]u8 = undefined;
 
     var stdin_reader = std.Io.File.stdin().reader(io, &read_buffer);
