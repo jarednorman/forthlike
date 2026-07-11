@@ -141,7 +141,7 @@ fn comma(vm: *Vm, _: *const Word) ForthError!void {
     const value = try vm.data_stack.pop();
 
     if (vm.cells_cursor >= vm.cells.len) {
-        return ForthError.DictionaryFull;
+        return ForthError.CellsFull;
     }
 
     vm.cells[vm.cells_cursor] = value;

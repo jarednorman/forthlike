@@ -5,7 +5,8 @@ pub const ForthError = error{
     StackUnderflow,
     UnknownWord,
     ZeroDivision,
-    DictionaryFull,
+    CellsFull,
+    WordsFull,
     NameStorageFull,
     MissingName,
 };
@@ -70,7 +71,7 @@ pub const Vm = struct {
 
     pub fn defineWord(self: *Vm, name: []const u8, code: Code, address: usize) ForthError!void {
         if (self.words_cursor >= self.words.len) {
-            return ForthError.DictionaryFull;
+            return ForthError.WordsFull;
         }
 
         self.words[self.words_cursor] = Word{
@@ -117,7 +118,7 @@ test "defineWord returns an error when the words table is full" {
         try vm.defineWord("x", doData, 0);
     }
 
-    try std.testing.expectError(ForthError.DictionaryFull, vm.defineWord("x", doData, 0));
+    try std.testing.expectError(ForthError.WordsFull, vm.defineWord("x", doData, 0));
 }
 
 test "stack overflow" {
