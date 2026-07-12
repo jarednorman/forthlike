@@ -40,6 +40,8 @@ const builtins = [_]Primitive{
     .{ .name = "if", .func = compileIf, .immediate = true, .compile_only = true },
     .{ .name = "else", .func = compileElse, .immediate = true, .compile_only = true },
     .{ .name = "then", .func = compileThen, .immediate = true, .compile_only = true },
+    .{ .name = "begin", .func = compileBegin, .immediate = true, .compile_only = true },
+    .{ .name = "until", .func = compileUntil, .immediate = true, .compile_only = true },
 };
 
 fn dup(vm: *Vm, _: *const Word) ForthError!void {
@@ -239,6 +241,18 @@ fn compileThen(vm: *Vm, _: *const Word) ForthError!void {
     const placeholder = try vm.data_stack.pop();
 
     vm.cells[@intCast(placeholder)] = @intCast(vm.cells_cursor);
+}
+
+fn compileBegin(vm: *Vm, _: *const Word) ForthError!void {
+    try vm.data_stack.push(@intCast(vm.cells_cursor));
+}
+
+fn compileUntil(vm: *Vm, _: *const Word) ForthError!void {
+    const target = try vm.data_stack.pop();
+    const zero_branch_xt = vm.findXt("0branch") orelse return ForthError.UnknownWord;
+
+    try vm.compileCell(@intCast(zero_branch_xt));
+    try vm.compileCell(target);
 }
 
 pub fn install(vm: *Vm) ForthError!void {

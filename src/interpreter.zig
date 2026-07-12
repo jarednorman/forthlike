@@ -486,6 +486,8 @@ test "compile-only words error outside a definition" {
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "if"));
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "else"));
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "then"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "begin"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "until"));
 }
 
 test "if else then takes the true branch on a nonzero flag" {
@@ -542,6 +544,35 @@ test "if else then nests" {
     try interpret(&vm, "1 u");
     try std.testing.expectEqual(20, vm.data_stack.pop());
 
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "begin until loops until the flag is nonzero" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": countdown begin 1 - dup 0= until drop ; 5 countdown");
+
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "begin until runs the body once per iteration" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": triple 0 swap begin swap 3 + swap 1 - dup 0= until drop ; 4 triple");
+
+    try std.testing.expectEqual(12, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "begin until runs the body at least once" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": once begin 1 + 1 until ; 5 once");
+
+    try std.testing.expectEqual(6, vm.data_stack.pop());
     try std.testing.expectEqual(0, vm.data_stack.count);
     try std.testing.expectEqual(0, vm.return_stack.count);
 }
