@@ -45,6 +45,8 @@ const builtins = [_]Primitive{
     .{ .name = "begin", .func = compileBegin, .immediate = true, .compile_only = true },
     .{ .name = "until", .func = compileUntil, .immediate = true, .compile_only = true },
     .{ .name = "recurse", .func = recurse, .immediate = true, .compile_only = true },
+    .{ .name = "(", .func = parenComment, .immediate = true },
+    .{ .name = "\\", .func = lineComment, .immediate = true },
 };
 
 fn dup(vm: *Vm, _: *const Word) ForthError!void {
@@ -244,6 +246,22 @@ fn semicolon(vm: *Vm, _: *const Word) ForthError!void {
 
 fn recurse(vm: *Vm, _: *const Word) ForthError!void {
     try vm.compileCell(@intCast(vm.words_cursor - 1));
+}
+
+fn parenComment(vm: *Vm, _: *const Word) ForthError!void {
+    while (vm.tokens.next()) |token| {
+        if (std.mem.eql(u8, token, ")")) {
+            return;
+        }
+    }
+}
+
+fn lineComment(vm: *Vm, _: *const Word) ForthError!void {
+    if (std.mem.indexOfScalarPos(u8, vm.tokens.buffer, vm.tokens.index, '\n')) |newline| {
+        vm.tokens.index = newline + 1;
+    } else {
+        vm.tokens.index = vm.tokens.buffer.len;
+    }
 }
 
 fn compileIf(vm: *Vm, _: *const Word) ForthError!void {

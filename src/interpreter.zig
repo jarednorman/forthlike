@@ -644,6 +644,55 @@ test "recurse compiles a self-call" {
     try std.testing.expectEqual(0, vm.return_stack.count);
 }
 
+test "( comments are skipped while interpreting" {
+    var vm = try newVm();
+
+    try interpret(&vm, "1 ( this is ignored ) 2");
+
+    try std.testing.expectEqual(2, vm.data_stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+}
+
+test "( comments are skipped while compiling" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": incr ( n -- n+1 ) 1 + ; 41 incr");
+
+    try std.testing.expectEqual(42, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "an unterminated ( comment runs to the end of the input" {
+    var vm = try newVm();
+
+    try interpret(&vm, "1 ( never closed 2 3");
+
+    try std.testing.expectEqual(1, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+}
+
+test "\\ comments skip the rest of the line" {
+    var vm = try newVm();
+
+    try interpret(&vm, "1 2 \\ ignored words + drop\n3");
+
+    try std.testing.expectEqual(3, vm.data_stack.pop());
+    try std.testing.expectEqual(2, vm.data_stack.pop());
+    try std.testing.expectEqual(1, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+}
+
+test "\\ on the last line skips to the end of the input" {
+    var vm = try newVm();
+
+    try interpret(&vm, "1 \\ no newline after this");
+
+    try std.testing.expectEqual(1, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+}
+
 test "@ and ! reject out of range addresses" {
     var vm = try newVm();
 
