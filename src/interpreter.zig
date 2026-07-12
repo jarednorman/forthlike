@@ -16,10 +16,24 @@ pub fn interpret(vm: *Vm, source: []const u8) ForthError!void {
     vm.tokens = std.mem.tokenizeAny(u8, source, " \t\r\n");
 
     while (vm.tokens.next()) |word| {
-        if (vm.findWord(word)) |entry| {
-            try vm.execute(entry);
+        if (vm.findXt(word)) |xt| {
+            const entry = &vm.words[xt];
+            if (!vm.compiling or entry.immediate) {
+                if (entry.compile_only and !vm.compiling) {
+                    return ForthError.CompileOnlyWord;
+                }
+                try vm.execute(entry);
+            } else {
+                try vm.compileCell(@intCast(xt));
+            }
         } else if (std.fmt.parseInt(i64, word, 10)) |number| {
-            try vm.data_stack.push(number);
+            if (vm.compiling) {
+                const lit_xt = vm.findXt("lit") orelse return ForthError.UnknownWord;
+                try vm.compileCell(@intCast(lit_xt));
+                try vm.compileCell(number);
+            } else {
+                try vm.data_stack.push(number);
+            }
         } else |_| {
             return ForthError.UnknownWord;
         }
@@ -188,10 +202,10 @@ test "r@ copies the top element from the return stack to the data stack" {
     try std.testing.expectEqual(42, vm.return_stack.pop());
 }
 
-test "exit returns an error when the return stack is empty" {
+test "exit is compile-only" {
     var vm = try newVm();
 
-    try std.testing.expectError(ForthError.StackUnderflow, interpret(&vm, "exit"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "exit"));
 }
 
 test "here puts the current cells cursor on the data stack" {
@@ -279,21 +293,16 @@ test "newest runtime definition is used" {
     try std.testing.expectEqual(1, vm.data_stack.pop());
 }
 
-fn compileCell(vm: *Vm, value: i64) void {
-    vm.cells[vm.cells_cursor] = value;
-    vm.cells_cursor += 1;
-}
-
 fn compileWord(vm: *Vm, name: []const u8, body: []const []const u8) ForthError!void {
     const body_start = vm.cells_cursor;
 
     for (body) |token| {
         if (vm.findXt(token)) |xt| {
-            compileCell(vm, @intCast(xt));
+            try vm.compileCell(@intCast(xt));
         } else if (std.fmt.parseInt(i64, token, 10)) |number| {
             const lit_xt = vm.findXt("lit") orelse return ForthError.UnknownWord;
-            compileCell(vm, @intCast(lit_xt));
-            compileCell(vm, number);
+            try vm.compileCell(@intCast(lit_xt));
+            try vm.compileCell(number);
         } else |_| {
             return ForthError.UnknownWord;
         }
@@ -360,14 +369,14 @@ test "branch jumps over code" {
 
     const body_start = vm.cells_cursor;
 
-    compileCell(&vm, branch_xt);
-    compileCell(&vm, @intCast(body_start + 5));
-    compileCell(&vm, lit_xt);
-    compileCell(&vm, 999);
-    compileCell(&vm, exit_xt);
-    compileCell(&vm, lit_xt); // body_start + 5
-    compileCell(&vm, 42);
-    compileCell(&vm, exit_xt);
+    try vm.compileCell(branch_xt);
+    try vm.compileCell(@intCast(body_start + 5));
+    try vm.compileCell(lit_xt);
+    try vm.compileCell(999);
+    try vm.compileCell(exit_xt);
+    try vm.compileCell(lit_xt); // body_start + 5
+    try vm.compileCell(42);
+    try vm.compileCell(exit_xt);
 
     try vm.defineWord("skip", vm_mod.doCol, body_start);
 
@@ -386,14 +395,14 @@ fn defineChoose(vm: *Vm) ForthError!void {
 
     const body_start = vm.cells_cursor;
 
-    compileCell(vm, zero_branch_xt);
-    compileCell(vm, @intCast(body_start + 5));
-    compileCell(vm, lit_xt);
-    compileCell(vm, 10);
-    compileCell(vm, exit_xt);
-    compileCell(vm, lit_xt); // body_start + 5
-    compileCell(vm, 20);
-    compileCell(vm, exit_xt);
+    try vm.compileCell(zero_branch_xt);
+    try vm.compileCell(@intCast(body_start + 5));
+    try vm.compileCell(lit_xt);
+    try vm.compileCell(10);
+    try vm.compileCell(exit_xt);
+    try vm.compileCell(lit_xt); // body_start + 5
+    try vm.compileCell(20);
+    try vm.compileCell(exit_xt);
 
     try vm.defineWord("choose", vm_mod.doCol, body_start);
 }
@@ -420,4 +429,58 @@ test "0branch falls through when the flag is nonzero" {
     try std.testing.expectEqual(10, vm.data_stack.pop());
     try std.testing.expectEqual(0, vm.data_stack.count);
     try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "colon definitions compile and execute" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": sq dup * ; 3 sq");
+
+    try std.testing.expectEqual(9, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "colon definitions can call other colon definitions" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": sq dup * ; : sq2 sq sq ; 3 sq2");
+
+    try std.testing.expectEqual(81, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "colon definitions compile literals" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": five 5 ; five");
+
+    try std.testing.expectEqual(5, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "colon redefinition shadows the old word" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": foo 1 ; : foo 2 ; foo");
+
+    try std.testing.expectEqual(2, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "colon returns an error when no name is given" {
+    var vm = try newVm();
+
+    try std.testing.expectError(ForthError.MissingName, interpret(&vm, ":"));
+}
+
+test "compile-only words error outside a definition" {
+    var vm = try newVm();
+
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "lit"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "branch"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "0branch"));
 }

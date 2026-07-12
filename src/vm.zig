@@ -9,12 +9,15 @@ pub const ForthError = error{
     WordsFull,
     NameStorageFull,
     MissingName,
+    CompileOnlyWord,
 };
 
 pub const Word = struct {
     name: []const u8,
     code: Code,
     address: usize,
+    immediate: bool = false,
+    compile_only: bool = false,
 };
 
 pub const Code = *const fn (vm: *Vm, self: *const Word) ForthError!void;
@@ -65,6 +68,7 @@ pub const Vm = struct {
     words: [64]Word = undefined,
     words_cursor: usize = 0,
     instruction_pointer: usize = sentinel,
+    compiling: bool = false,
 
     pub fn execute(self: *Vm, word: *const Word) ForthError!void {
         self.instruction_pointer = sentinel;
@@ -77,6 +81,15 @@ pub const Vm = struct {
             const next_word = &self.words[@intCast(xt)];
             try next_word.code(self, next_word);
         }
+    }
+
+    pub fn compileCell(self: *Vm, value: i64) ForthError!void {
+        if (self.cells_cursor >= self.cells.len) {
+            return ForthError.CellsFull;
+        }
+
+        self.cells[self.cells_cursor] = value;
+        self.cells_cursor += 1;
     }
 
     pub fn storeName(self: *Vm, name: []const u8) ForthError![]const u8 {

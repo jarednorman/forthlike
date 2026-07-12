@@ -8,6 +8,8 @@ const Word = vm_mod.Word;
 const Primitive = struct {
     name: []const u8,
     func: vm_mod.Code,
+    immediate: bool = false,
+    compile_only: bool = false,
 };
 
 const builtins = [_]Primitive{
@@ -29,10 +31,12 @@ const builtins = [_]Primitive{
     .{ .name = ",", .func = comma },
     .{ .name = "here", .func = here },
     .{ .name = "create", .func = create },
-    .{ .name = "exit", .func = exit },
-    .{ .name = "lit", .func = lit },
-    .{ .name = "branch", .func = branch },
-    .{ .name = "0branch", .func = conditionalBranch },
+    .{ .name = "exit", .func = exit, .compile_only = true },
+    .{ .name = "lit", .func = lit, .compile_only = true },
+    .{ .name = "branch", .func = branch, .compile_only = true },
+    .{ .name = "0branch", .func = conditionalBranch, .compile_only = true },
+    .{ .name = ":", .func = colon },
+    .{ .name = ";", .func = semicolon, .immediate = true },
 };
 
 fn dup(vm: *Vm, _: *const Word) ForthError!void {
@@ -144,12 +148,7 @@ fn copyFromReturnStack(vm: *Vm, _: *const Word) ForthError!void {
 fn comma(vm: *Vm, _: *const Word) ForthError!void {
     const value = try vm.data_stack.pop();
 
-    if (vm.cells_cursor >= vm.cells.len) {
-        return ForthError.CellsFull;
-    }
-
-    vm.cells[vm.cells_cursor] = value;
-    vm.cells_cursor += 1;
+    try vm.compileCell(value);
 }
 
 fn here(vm: *Vm, _: *const Word) ForthError!void {
@@ -170,7 +169,6 @@ fn exit(vm: *Vm, _: *const Word) ForthError!void {
 }
 
 fn lit(vm: *Vm, _: *const Word) ForthError!void {
-    // Compile-only; a bare "lit" at top level panics (ip is at the sentinel).
     const value = vm.cells[vm.instruction_pointer];
     vm.instruction_pointer += 1;
 
@@ -178,14 +176,12 @@ fn lit(vm: *Vm, _: *const Word) ForthError!void {
 }
 
 fn branch(vm: *Vm, _: *const Word) ForthError!void {
-    // Compile-only; a bare "branch" at top level panics (ip is at the sentinel).
     const target = vm.cells[vm.instruction_pointer];
 
     vm.instruction_pointer = @intCast(target);
 }
 
 fn conditionalBranch(vm: *Vm, _: *const Word) ForthError!void {
-    // Compile-only; a bare "0branch" at top level panics (ip is at the sentinel).
     const target = vm.cells[vm.instruction_pointer];
 
     const condition = try vm.data_stack.pop();
@@ -197,8 +193,30 @@ fn conditionalBranch(vm: *Vm, _: *const Word) ForthError!void {
     }
 }
 
+// TODO: This approach means that we get free recursion *but* can't access
+// previous definitions of words from within new definitions. Need to implement
+// a "smudge" bit to remove this limitation later.
+fn colon(vm: *Vm, _: *const Word) ForthError!void {
+    const name = vm.tokens.next() orelse return ForthError.MissingName;
+
+    const stored_name = try vm.storeName(name);
+    try vm.defineWord(stored_name, vm_mod.doCol, vm.cells_cursor);
+
+    vm.compiling = true;
+}
+
+fn semicolon(vm: *Vm, _: *const Word) ForthError!void {
+    const exit_word = vm.findXt("exit") orelse return ForthError.UnknownWord;
+
+    try vm.compileCell(@intCast(exit_word));
+
+    vm.compiling = false;
+}
+
 pub fn install(vm: *Vm) ForthError!void {
     for (builtins) |builtin| {
         try vm.defineWord(builtin.name, builtin.func, 0);
+        vm.words[vm.words_cursor - 1].immediate = builtin.immediate;
+        vm.words[vm.words_cursor - 1].compile_only = builtin.compile_only;
     }
 }
