@@ -37,6 +37,9 @@ const builtins = [_]Primitive{
     .{ .name = "0branch", .func = conditionalBranch, .compile_only = true },
     .{ .name = ":", .func = colon },
     .{ .name = ";", .func = semicolon, .immediate = true },
+    .{ .name = "if", .func = compileIf, .immediate = true, .compile_only = true },
+    .{ .name = "else", .func = compileElse, .immediate = true, .compile_only = true },
+    .{ .name = "then", .func = compileThen, .immediate = true, .compile_only = true },
 };
 
 fn dup(vm: *Vm, _: *const Word) ForthError!void {
@@ -211,6 +214,31 @@ fn semicolon(vm: *Vm, _: *const Word) ForthError!void {
     try vm.compileCell(@intCast(exit_word));
 
     vm.compiling = false;
+}
+
+fn compileIf(vm: *Vm, _: *const Word) ForthError!void {
+    const zero_branch_xt = vm.findXt("0branch") orelse return ForthError.UnknownWord;
+
+    try vm.compileCell(@intCast(zero_branch_xt));
+    try vm.data_stack.push(@intCast(vm.cells_cursor));
+    try vm.compileCell(0);
+}
+
+fn compileElse(vm: *Vm, _: *const Word) ForthError!void {
+    const placeholder = try vm.data_stack.pop();
+    const branch_xt = vm.findXt("branch") orelse return ForthError.UnknownWord;
+
+    try vm.compileCell(@intCast(branch_xt));
+    try vm.data_stack.push(@intCast(vm.cells_cursor));
+    try vm.compileCell(0);
+
+    vm.cells[@intCast(placeholder)] = @intCast(vm.cells_cursor);
+}
+
+fn compileThen(vm: *Vm, _: *const Word) ForthError!void {
+    const placeholder = try vm.data_stack.pop();
+
+    vm.cells[@intCast(placeholder)] = @intCast(vm.cells_cursor);
 }
 
 pub fn install(vm: *Vm) ForthError!void {

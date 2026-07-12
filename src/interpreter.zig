@@ -483,4 +483,65 @@ test "compile-only words error outside a definition" {
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "lit"));
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "branch"));
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "0branch"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "if"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "else"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "then"));
+}
+
+test "if else then takes the true branch on a nonzero flag" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": choose if 10 else 20 then ; 1 choose");
+
+    try std.testing.expectEqual(10, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "if else then takes the false branch on a zero flag" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": choose if 10 else 20 then ; 0 choose");
+
+    try std.testing.expectEqual(20, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "if then without else runs the body on a nonzero flag" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": maybe if 42 then ; 1 maybe");
+
+    try std.testing.expectEqual(42, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "if then without else skips the body on a zero flag" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": maybe if 42 then ; 0 maybe");
+
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "if else then nests" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": t if 1 if 10 else 20 then else 30 then ;");
+    try interpret(&vm, ": u if 0 if 10 else 20 then else 30 then ;");
+
+    try interpret(&vm, "1 t");
+    try std.testing.expectEqual(10, vm.data_stack.pop());
+
+    try interpret(&vm, "0 t");
+    try std.testing.expectEqual(30, vm.data_stack.pop());
+
+    try interpret(&vm, "1 u");
+    try std.testing.expectEqual(20, vm.data_stack.pop());
+
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
 }
