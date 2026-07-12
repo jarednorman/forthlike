@@ -488,6 +488,7 @@ test "compile-only words error outside a definition" {
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "then"));
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "begin"));
     try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "until"));
+    try std.testing.expectError(ForthError.CompileOnlyWord, interpret(&vm, "recurse"));
 }
 
 test "if else then takes the true branch on a nonzero flag" {
@@ -613,6 +614,32 @@ test "colon definitions can read and write variables" {
     try interpret(&vm, "create counter 0 , : bump counter @ 1 + counter ! ; bump bump bump counter @");
 
     try std.testing.expectEqual(3, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "a redefinition can call the previous definition" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": foo 1 ; : foo foo 10 + ; foo");
+
+    try std.testing.expectEqual(11, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "a word is hidden inside its own definition" {
+    var vm = try newVm();
+
+    try std.testing.expectError(ForthError.UnknownWord, interpret(&vm, ": quux quux ;"));
+}
+
+test "recurse compiles a self-call" {
+    var vm = try newVm();
+
+    try interpret(&vm, ": fact dup 1 < if drop 1 else dup 1 - recurse * then ; 5 fact");
+
+    try std.testing.expectEqual(120, vm.data_stack.pop());
     try std.testing.expectEqual(0, vm.data_stack.count);
     try std.testing.expectEqual(0, vm.return_stack.count);
 }

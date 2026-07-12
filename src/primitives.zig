@@ -44,6 +44,7 @@ const builtins = [_]Primitive{
     .{ .name = "then", .func = compileThen, .immediate = true, .compile_only = true },
     .{ .name = "begin", .func = compileBegin, .immediate = true, .compile_only = true },
     .{ .name = "until", .func = compileUntil, .immediate = true, .compile_only = true },
+    .{ .name = "recurse", .func = recurse, .immediate = true, .compile_only = true },
 };
 
 fn dup(vm: *Vm, _: *const Word) ForthError!void {
@@ -221,14 +222,13 @@ fn conditionalBranch(vm: *Vm, _: *const Word) ForthError!void {
     }
 }
 
-// TODO: This approach means that we get free recursion *but* can't access
-// previous definitions of words from within new definitions. Need to implement
-// a "smudge" bit to remove this limitation later.
 fn colon(vm: *Vm, _: *const Word) ForthError!void {
     const name = vm.tokens.next() orelse return ForthError.MissingName;
 
     const stored_name = try vm.storeName(name);
     try vm.defineWord(stored_name, vm_mod.doCol, vm.cells_cursor);
+
+    vm.words[vm.words_cursor - 1].hidden = true;
 
     vm.compiling = true;
 }
@@ -238,7 +238,12 @@ fn semicolon(vm: *Vm, _: *const Word) ForthError!void {
 
     try vm.compileCell(@intCast(exit_word));
 
+    vm.words[vm.words_cursor - 1].hidden = false;
     vm.compiling = false;
+}
+
+fn recurse(vm: *Vm, _: *const Word) ForthError!void {
+    try vm.compileCell(@intCast(vm.words_cursor - 1));
 }
 
 fn compileIf(vm: *Vm, _: *const Word) ForthError!void {

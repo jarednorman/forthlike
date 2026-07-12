@@ -19,6 +19,7 @@ pub const Word = struct {
     address: usize,
     immediate: bool = false,
     compile_only: bool = false,
+    hidden: bool = false,
 };
 
 pub const Code = *const fn (vm: *Vm, self: *const Word) ForthError!void;
@@ -122,7 +123,7 @@ pub const Vm = struct {
         var i = self.words_cursor;
         while (i > 0) {
             i -= 1;
-            if (std.mem.eql(u8, self.words[i].name, name)) {
+            if (!self.words[i].hidden and std.mem.eql(u8, self.words[i].name, name)) {
                 return i;
             }
         }
