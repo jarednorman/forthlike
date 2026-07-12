@@ -29,6 +29,8 @@ const builtins = [_]Primitive{
     .{ .name = "r>", .func = fromReturnStack },
     .{ .name = "r@", .func = copyFromReturnStack },
     .{ .name = ",", .func = comma },
+    .{ .name = "@", .func = fetch },
+    .{ .name = "!", .func = store },
     .{ .name = "here", .func = here },
     .{ .name = "create", .func = create },
     .{ .name = "exit", .func = exit, .compile_only = true },
@@ -154,6 +156,27 @@ fn comma(vm: *Vm, _: *const Word) ForthError!void {
     const value = try vm.data_stack.pop();
 
     try vm.compileCell(value);
+}
+
+fn fetch(vm: *Vm, _: *const Word) ForthError!void {
+    const address = try vm.data_stack.pop();
+
+    if (address < 0 or address >= vm.cells.len) {
+        return ForthError.InvalidAddress;
+    }
+
+    try vm.data_stack.push(vm.cells[@intCast(address)]);
+}
+
+fn store(vm: *Vm, _: *const Word) ForthError!void {
+    const address = try vm.data_stack.pop();
+    const value = try vm.data_stack.pop();
+
+    if (address < 0 or address >= vm.cells.len) {
+        return ForthError.InvalidAddress;
+    }
+
+    vm.cells[@intCast(address)] = value;
 }
 
 fn here(vm: *Vm, _: *const Word) ForthError!void {

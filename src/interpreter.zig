@@ -576,3 +576,52 @@ test "begin until runs the body at least once" {
     try std.testing.expectEqual(0, vm.data_stack.count);
     try std.testing.expectEqual(0, vm.return_stack.count);
 }
+
+test "@ fetches the contents of a cell" {
+    var vm = try newVm();
+
+    try interpret(&vm, "7 , 0 @");
+
+    try std.testing.expectEqual(7, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+}
+
+test "! stores a value into a cell" {
+    var vm = try newVm();
+
+    try interpret(&vm, "0 , 42 0 ! 0 @");
+
+    try std.testing.expectEqual(42, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+}
+
+test "create with @ and ! makes a variable" {
+    var vm = try newVm();
+
+    try interpret(&vm, "create counter 0 , counter @");
+    try std.testing.expectEqual(0, vm.data_stack.pop());
+
+    try interpret(&vm, "42 counter ! counter @");
+    try std.testing.expectEqual(42, vm.data_stack.pop());
+
+    try std.testing.expectEqual(0, vm.data_stack.count);
+}
+
+test "colon definitions can read and write variables" {
+    var vm = try newVm();
+
+    try interpret(&vm, "create counter 0 , : bump counter @ 1 + counter ! ; bump bump bump counter @");
+
+    try std.testing.expectEqual(3, vm.data_stack.pop());
+    try std.testing.expectEqual(0, vm.data_stack.count);
+    try std.testing.expectEqual(0, vm.return_stack.count);
+}
+
+test "@ and ! reject out of range addresses" {
+    var vm = try newVm();
+
+    try std.testing.expectError(ForthError.InvalidAddress, interpret(&vm, "999 @"));
+    try std.testing.expectError(ForthError.InvalidAddress, interpret(&vm, "-1 @"));
+    try std.testing.expectError(ForthError.InvalidAddress, interpret(&vm, "5 999 !"));
+    try std.testing.expectError(ForthError.InvalidAddress, interpret(&vm, "5 -1 !"));
+}

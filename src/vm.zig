@@ -10,6 +10,7 @@ pub const ForthError = error{
     NameStorageFull,
     MissingName,
     CompileOnlyWord,
+    InvalidAddress,
 };
 
 pub const Word = struct {
